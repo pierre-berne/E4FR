@@ -1,6 +1,6 @@
-#ifndef H_GL_TP1
-#define H_GL_TP1
+#ifndef _TP1_H
+#define _TP1_H
 
-void tp1(void);
+void print_message(char*);
 
 #endif
