@@ -1,0 +1,82 @@
+#include <stdlib.h>
+#include <stdio.h>
+#include <assert.h>
+#include <sys/types.h>
+#include <unistd.h>
+#include <sys/wait.h>
+
+struct question {
+  int client;   /* a ignorer dans la 1ere version */
+  unsigned char oper;    /* 0 = +, 1 = -, 2 = *, 3 = /  */
+  double x, y;
+};
+
+void gen_question(struct question *q)
+{
+  q->oper = random() % 4;
+  q->x = random() % 100;
+  q->y = 1+ random() % 100; /* pour eviter division par 0 */
+}
+
+double eval_question(struct question *q)
+{
+  double r;
+  
+  switch (q->oper)
+    {
+    case 0: r= q->x + q->y;
+      break;
+    case 1: r= q->x - q->y;
+      break;
+    case 2: r= q->x * q->y;
+      break;
+    case 3: r= q->x / q->y;
+      break;
+    default:
+      fprintf(stderr, "gen_question: operation invalide = %d\n", q->oper);
+    }
+
+  return r;
+}
+
+void print_question(struct question *q)
+{
+  char *op = "+-*/";
+  
+  printf("%lf %c %lf", q->x, op[q->oper], q->y);
+}
+
+int main(){
+                int status;
+
+        double buffer_rep;
+        int in[2], out[2];
+        pipe(in), pipe(out);
+        int client = fork();
+        struct question q;
+                struct question buffer_question; 
+                double retour;
+
+        if(client == 0){ //Client
+                srandom(getpid()); /* initialiser le generateur de nombres aleatoires */
+                for(int i = 0; i < 10; i++){
+                        gen_question(&q);
+                        write(in[1], &q,  sizeof(q));
+                        read(out[0], &buffer_rep, 512);
+                        print_question(&q);
+                        printf(" = %lf\n", buffer_rep); 
+                }
+                exit(255);
+        }else{
+        while(waitpid(client, &status, WNOHANG) == 0){
+                read(in[0], &buffer_question, sizeof(buffer_question));
+                retour = eval_question(&buffer_question);
+                write(out[1], &retour, sizeof(retour));
+                }
+        }
+
+        wait(NULL);
+        close(in[1]); close(out[1]);
+
+        return 0;
+}
